@@ -17,6 +17,13 @@ Roda em **TV Android, celular Android e Chromebook** (app `.apk`) e em **qualque
 - O placar fica salvo no aparelho; se o app fechar, a partida continua de onde parou.
 - Internet só é usada para baixar as fontes; sem internet o jogo usa as fontes do sistema.
 
+## Atualização automática do jogo (a partir da versão 1.2 do app)
+
+Ao abrir, o app mostra a última versão salva do jogo e, em segundo plano, baixa o
+`app/src/main/assets/index.html` mais novo deste repositório (branch `main`).
+Se mudou, guarda no aparelho, recarrega e mostra "Jogo atualizado!". Sem internet, segue com a versão salva.
+Perguntas, regras e visual atualizam sozinhos; só mudanças na parte Android (Java/manifest) exigem instalar um .apk novo.
+
 ## Compilação
 
 Cada envio para `main` roda o GitHub Actions (`.github/workflows/build.yml`), que gera
