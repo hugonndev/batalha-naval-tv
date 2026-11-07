@@ -1,6 +1,6 @@
 # Batalha Naval da Antonela (app para Android TV)
 
-Jogo em grupos para o chá de bebê: tabuleiro 16x16 com barcos escondidos.
+Jogo em grupos para o chá de bebê: tabuleiro 12x12 com barcos escondidos.
 Achou um pedaço de barco, abre uma pergunta (4 alternativas ou mito ou verdade).
 Acertou, ganha o pedaço e joga de novo; errou, o pedaço volta a se esconder e passa a vez.
 

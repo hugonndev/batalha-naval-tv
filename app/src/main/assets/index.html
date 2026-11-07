@@ -113,7 +113,7 @@ html.kbd .cell:focus { outline: .2em solid var(--ink); outline-offset: .05em; bo
 .game { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1.6em; align-items: start; }
 .boardwrap { width: min(76vh, 44em); max-width: 100%; }
 .board {
-  display: grid; grid-template-columns: 1.4em repeat(16, minmax(0, 1fr)); gap: .16em;
+  display: grid; grid-template-columns: 1.4em repeat(12, minmax(0, 1fr)); gap: .2em;
   background: var(--surface); border-radius: 1.3em; padding: .75em;
   box-shadow: 0 .5em 2em color-mix(in srgb, var(--ink) 9%, transparent);
 }
@@ -252,8 +252,8 @@ html.kbd .cell:focus { outline: .2em solid var(--ink); outline-offset: .05em; bo
 'use strict';
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const N = 16, COLS = 'ABCDEFGHIJKLMNOP', LT = ['A', 'B', 'C', 'D'];
-const PTS = 100, BONUS = 200, SECS = 30, REVEAL_MS = 1300, VERSION = 4;
+const N = 12, COLS = 'ABCDEFGHIJKL', LT = ['A', 'B', 'C', 'D'];
+const PTS = 100, BONUS = 200, SECS = 30, REVEAL_MS = 1300, VERSION = 5;
 const KEY = 'batalha-naval-antonela';
 const TEAMS = [
   { name: 'Time Rosa', c: 'rosa' }, { name: 'Time Amarelo', c: 'amarelo' },
