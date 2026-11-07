@@ -15,6 +15,8 @@ Roda em **TV Android, celular Android e Chromebook** (app `.apk`) e em **qualque
 - TV: setas movem o cursor, OK confirma. Celular: toque na tela, em pé ou deitado.
   Notebook: mouse, ou setas e Enter.
 - O placar fica salvo no aparelho; se o app fechar, a partida continua de onde parou.
+- Efeitos sonoros: 20 áudios de memes embutidos no jogo, cada um ligado a um momento (água, achou barco, acertou, errou,
+  3 acertos seguidos, afundou, vitória). Dá para trocar no botão Sons; momentos sem áudio tocam um som padrão sintetizado.
 - Internet só é usada para baixar as fontes; sem internet o jogo usa as fontes do sistema.
 
 ## Atualização automática do jogo (a partir da versão 1.2 do app)
