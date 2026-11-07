@@ -1,0 +1,795 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>Batalha Naval da Antonela</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+/* Layout: tela de TV com o tabuleiro 10x10 à esquerda e o painel (vez, placar, frota) à direita.
+   A pergunta abre por cima, estilo programa de auditório. Tema único, claro, rosa e amarelo com mar azul-bebê. */
+:root {
+  color-scheme: light;
+  --bg: #FFF7F7;
+  --dot: #F7DCE2;
+  --surface: #FFFFFF;
+  --tint: #FBF0F2;
+  --ink: #4A2B37;
+  --on-ink: #FFFFFF;
+  --muted: #876774;
+  --line: #EBD3DA;
+  --sea: #DDEBF6;
+  --sea-deep: #A8C5DD;
+  --sea-shot: #F2F7FB;
+  --pink: #F6BCC8;
+  --pink-soft: #FDE8ED;
+  --pink-deep: #CF6582;
+  --yellow: #FAE08E;
+  --yellow-soft: #FFF5D2;
+  --yellow-deep: #D9A92A;
+  --lilac: #DED2F4;
+  --lilac-deep: #9D88CC;
+  --mint: #CDEBDC;
+  --mint-deep: #5FA37F;
+  --peach: #FCD6BC;
+  --peach-deep: #D98B5F;
+  --blue: #C3D8F5;
+  --blue-deep: #5B86C5;
+  --ok: #2F7D55;
+  --ok-soft: #DDF1E5;
+  --bad: #B9475F;
+  --bad-soft: #F8DFE4;
+  --display: 'Fredoka', 'Nunito', system-ui, sans-serif;
+  --body: 'Nunito', system-ui, sans-serif;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0; color: var(--ink); font-family: var(--body);
+  background-color: var(--bg);
+  background-image: radial-gradient(var(--dot) 1.5px, transparent 2px);
+  background-size: 26px 26px;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button[disabled] { cursor: default; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+/* Controle remoto / teclado: destaque bem visível de onde está o cursor */
+html.kbd button:focus, html.kbd input:focus { outline: .2em solid var(--ink); outline-offset: .15em; }
+html.kbd .cell:focus { outline: .2em solid var(--ink); outline-offset: .05em; box-shadow: 0 0 0 .4em var(--yellow); z-index: 2; }
+
+.app {
+  min-height: 100%; max-width: 1800px; margin: 0 auto; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: clamp(10px, 1.6vh, 22px);
+  padding-block: clamp(12px, 2vh, 28px);
+  padding-left: max(16px, 2.5vw, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, 2.5vw, env(safe-area-inset-right, 0px));
+  font-size: clamp(12px, calc(.8vw + .8vh), 26px);
+}
+.top { display: flex; align-items: center; justify-content: space-between; gap: 1em; flex-wrap: wrap; }
+.kicker { margin: 0; font-size: .74em; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.title { margin: 0; font: 700 1.9em/1 var(--display); }
+.title span { color: var(--pink-deep); }
+.display { margin: 0; font: 700 2.2em/1.05 var(--display); text-wrap: balance; }
+.hint { margin: 0; color: var(--muted); font-weight: 700; }
+
+.btn { border: 2px solid var(--ink); background: var(--surface); border-radius: 999px; padding: .6em 1.3em; font-weight: 800; }
+.btn.primary { background: var(--ink); color: var(--on-ink); }
+.btn.sm { padding: .38em .9em; font-size: .85em; border-width: 1.5px; }
+.btn[disabled] { opacity: .4; }
+.row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6em; }
+.row.end { justify-content: flex-end; }
+.grp { display: flex; flex-wrap: wrap; gap: .4em; align-items: center; }
+
+.card {
+  box-sizing: border-box; background: var(--surface); border-radius: 1.5em;
+  padding: clamp(1em, 2.4vw, 1.8em);
+  box-shadow: 0 .5em 2em color-mix(in srgb, var(--ink) 9%, transparent);
+  display: flex; flex-direction: column; gap: .9em; min-width: 0;
+}
+
+/* Cores dos times */
+.t-rosa { --tc: var(--pink); --tcd: var(--pink-deep); }
+.t-amarelo { --tc: var(--yellow); --tcd: var(--yellow-deep); }
+.t-lilas { --tc: var(--lilac); --tcd: var(--lilac-deep); }
+.t-menta { --tc: var(--mint); --tcd: var(--mint-deep); }
+.t-pessego { --tc: var(--peach); --tcd: var(--peach-deep); }
+.t-azul { --tc: var(--blue); --tcd: var(--blue-deep); }
+
+/* Configuração */
+.setup { width: min(100%, 46em); margin: auto; }
+.seg { display: inline-flex; gap: .3em; padding: .3em; background: var(--tint); border-radius: 999px; }
+.seg button { border: 0; background: transparent; border-radius: 999px; padding: .45em 1.1em; font-weight: 800; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); }
+.names { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6em; }
+.names label { display: flex; align-items: center; gap: .5em; background: var(--tc); border: 2px solid var(--tcd); border-radius: 999px; padding: .3em .4em .3em .9em; }
+.names input { flex: 1; min-width: 0; border: 0; background: var(--surface); border-radius: 999px; padding: .45em .8em; font-weight: 700; }
+.rules { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: .35em; line-height: 1.45; }
+
+/* Jogo */
+.game { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1.6em; align-items: start; }
+.boardwrap { width: min(76vh, 44em); max-width: 100%; }
+.board {
+  display: grid; grid-template-columns: 1.4em repeat(16, minmax(0, 1fr)); gap: .16em;
+  background: var(--surface); border-radius: 1.3em; padding: .75em;
+  box-shadow: 0 .5em 2em color-mix(in srgb, var(--ink) 9%, transparent);
+}
+.lab { display: grid; place-items: center; font: 700 .7em var(--display); color: var(--muted); }
+.cell {
+  position: relative; overflow: hidden;
+  aspect-ratio: 1; min-width: 0; border: 0; border-radius: .26em; padding: 0;
+  background: var(--sea); box-shadow: inset 0 -.16em 0 var(--sea-deep);
+  display: grid; place-items: center; font: 700 1em/1 var(--display);
+}
+.cell:not([disabled]):hover { background: color-mix(in srgb, var(--sea) 70%, var(--yellow)); }
+.cell.miss { background: var(--sea-shot); box-shadow: none; color: var(--sea-deep); }
+.cell.pending { background: var(--yellow); box-shadow: inset 0 0 0 .16em var(--ink); }
+.cell.hit { background: var(--tc); box-shadow: inset 0 0 0 .12em var(--tcd); }
+.cell.sunk { box-shadow: inset 0 0 0 .2em var(--ink); }
+.cell.ghost { background: color-mix(in srgb, var(--sea) 60%, var(--surface)); }
+.cell[disabled] { cursor: default; }
+
+/* Cada barco é um desenho inteiro, fatiado: cada casa mostra só a sua parte */
+.piece { position: absolute; inset: 0; }
+.slice { position: absolute; inset: 0; background-repeat: no-repeat; }
+.cell.v .slice { transform: rotate(90deg); }
+.cell.ghost .slice { opacity: .3; }
+@media (prefers-reduced-motion: no-preference) {
+  .cell { transition: background-color .25s; }
+  .cell.rise .piece { animation: rise .85s cubic-bezier(.2, .8, .3, 1.25) both; }
+  .cell.rise::after {
+    content: ""; position: absolute; inset: 12%; border-radius: 50%;
+    border: .18em solid var(--surface); animation: ripple 1s ease-out .1s both; pointer-events: none;
+  }
+}
+@keyframes rise {
+  0% { transform: translateY(70%) scale(.5); opacity: 0; }
+  60% { transform: translateY(-8%) scale(1.06); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes ripple {
+  from { transform: scale(.3); opacity: .9; }
+  to { transform: scale(1.7); opacity: 0; }
+}
+
+.side { display: flex; flex-direction: column; gap: .75em; min-width: 0; }
+.turn { background: var(--tc); border: 2px solid var(--tcd); border-radius: 1.3em; padding: .8em 1.1em; display: flex; flex-direction: column; gap: .15em; }
+.turn .who { margin: 0; font: 700 1.7em/1.05 var(--display); overflow-wrap: anywhere; }
+.msg { margin: 0; font-weight: 700; font-size: 1.02em; line-height: 1.4; }
+.score { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35em; }
+.score.many { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.score li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .6em; padding: .45em .8em; border-radius: .9em; background: var(--tint); border: 2px solid transparent; }
+.score li.now { background: var(--surface); border-color: var(--ink); }
+.dot { width: 1em; height: 1em; border-radius: 50%; background: var(--tc); border: 2px solid var(--tcd); }
+.score .nm { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.score .pts { font: 700 1.2em var(--display); font-variant-numeric: tabular-nums; text-align: right; }
+.score small { display: block; font: 700 .62em var(--body); color: var(--muted); }
+.fleet { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(11em, 1fr)); gap: .4em 1em; }
+.fleet li { display: flex; align-items: center; gap: .5em; font-weight: 700; font-size: .9em; min-width: 0; }
+.fleet .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fleet li.down .nm { text-decoration: line-through; color: var(--muted); }
+.pieces { display: flex; gap: .16em; flex: none; }
+.pieces i { width: .75em; height: .75em; border-radius: .2em; background: var(--sea); box-shadow: inset 0 -.1em 0 var(--sea-deep); }
+.pieces i.hit { background: var(--tc); box-shadow: inset 0 0 0 .1em var(--tcd); }
+
+/* Pergunta (por cima do tabuleiro) */
+.overlay {
+  position: fixed; inset: 0; z-index: 10; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--ink) 45%, transparent);
+  padding-block: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  overflow-y: auto; font-size: clamp(12px, calc(.8vw + .8vh), 26px);
+}
+.modal { width: min(100%, 50em); box-sizing: border-box; background: var(--surface); border-radius: 1.6em; padding: clamp(1.1em, 3vw, 2em); display: flex; flex-direction: column; gap: 1em; border-top: .6em solid var(--tcd); }
+.mhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 1em; }
+.pill { display: inline-block; background: var(--tc); border: 2px solid var(--tcd); border-radius: 999px; padding: .25em .9em; font-weight: 800; }
+.mtimer { flex: none; min-width: 2.6em; height: 2.6em; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--on-ink); font: 700 1.3em/1 var(--display); font-variant-numeric: tabular-nums; }
+.mtimer.low { background: var(--pink-deep); }
+.mtimer.done { border-radius: 999px; padding: 0 .7em; font-size: 1em; }
+.question { margin: 0; font: 600 1.85em/1.2 var(--display); text-wrap: balance; }
+.mv { margin: 0 0 -.5em; font: 700 1.15em/1 var(--display); color: var(--pink-deep); }
+.alts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6em; }
+.alt {
+  display: flex; align-items: center; gap: .7em; text-align: left;
+  border: 2px solid var(--line); background: var(--tint); border-radius: 1em; padding: .7em .9em;
+  font: 600 1.2em/1.2 var(--display); min-width: 0;
+}
+.alt .lt { flex: none; width: 1.8em; height: 1.8em; border-radius: 50%; display: grid; place-items: center; background: var(--surface); border: 2px solid var(--line); font: 700 .8em/1 var(--display); }
+.alt .tx { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.alt:not([disabled]):hover { border-color: var(--ink); }
+.alt.chosen { background: var(--yellow); border-color: var(--ink); }
+.alt.right { background: var(--ok-soft); border-color: var(--ok); }
+.alt.wrong { background: var(--bad-soft); border-color: var(--bad); }
+.sure { margin: 0; font: 700 1.7em/1.1 var(--display); text-align: center; }
+.verdict { margin: 0; font: 700 2.1em/1.1 var(--display); }
+.verdict.ok { color: var(--ok); }
+.verdict.bad { color: var(--bad); }
+.bonus { margin: 0; background: var(--yellow-soft); border: 2px solid var(--yellow); border-radius: 1em; padding: .6em .9em; font-weight: 800; font-size: 1.1em; }
+
+/* Final */
+.final { width: min(100%, 48em); margin: auto; align-items: center; text-align: center; }
+.podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: .8em; width: 100%; max-width: 34em; }
+.pod { display: flex; flex-direction: column; align-items: center; gap: .3em; min-width: 0; }
+.pod .nm { font: 700 1.15em/1.15 var(--display); overflow-wrap: anywhere; }
+.pod .sc { font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pod .block { width: 100%; border-radius: 1em 1em .3em .3em; display: grid; place-items: center; font: 700 1.9em var(--display); background: var(--tc); border: 2px solid var(--tcd); }
+.pod.p1 .block { height: 5.2em; }
+.pod.p2 .block { height: 3.8em; }
+.pod.p3 .block { height: 2.8em; }
+.final .score { width: 100%; max-width: 30em; text-align: left; }
+
+#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
+
+@media (max-width: 820px) {
+  .game { grid-template-columns: minmax(0, 1fr); }
+  .boardwrap { width: 100%; }
+  .names, .alts, .score.many { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div>
+      <p class="kicker">Chá da Antonela</p>
+      <h1 class="title">Batalha <span>Naval</span></h1>
+    </div>
+    <div class="grp">
+      <button type="button" class="btn sm" data-act="fs" id="fs">Tela cheia</button>
+    </div>
+  </header>
+  <main id="main"></main>
+</div>
+<div class="overlay" id="overlay" hidden>
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Pergunta"></div>
+</div>
+<canvas id="confetti" hidden></canvas>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const N = 16, COLS = 'ABCDEFGHIJKLMNOP', LT = ['A', 'B', 'C', 'D'];
+const PTS = 100, BONUS = 200, SECS = 30, REVEAL_MS = 1300, VERSION = 4;
+const KEY = 'batalha-naval-antonela';
+const TEAMS = [
+  { name: 'Time Rosa', c: 'rosa' }, { name: 'Time Amarelo', c: 'amarelo' },
+  { name: 'Time Lilás', c: 'lilas' }, { name: 'Time Menta', c: 'menta' },
+  { name: 'Time Pêssego', c: 'pessego' }, { name: 'Time Azul', c: 'azul' }
+];
+const FLEET = [
+  ['Porta-aviões', 5], ['Navio', 4], ['Navio', 4], ['Lancha', 3], ['Lancha', 3],
+  ['Barquinho', 2], ['Barquinho', 2], ['Submarino', 1], ['Submarino', 1]
+];
+const FEM = n => n === 'Lancha';
+
+/* Perguntas (alternativa certa em "a", contando de 0). MV() cria uma pergunta de mito ou verdade. */
+const MV = (q, verdade) => ({ q, o: ['Mito', 'Verdade'], a: verdade ? 1 : 0 });
+const QS = [
+  MV('Recém-nascidos enxergam com nitidez objetos a vários metros de distância.', false),
+  MV('Nas primeiras semanas, o bebê chora quase sem lágrimas.', true),
+  MV('A maioria dos bebês já nasce com dentinhos aparecendo.', false),
+  MV('O bebê já consegue ouvir sons ainda dentro da barriga da mamãe.', true),
+  MV('Recém-nascidos gostam mais de olhar para rostos do que para outras coisas.', true),
+  MV('Até os 6 meses, o bebê que mama só no peito não precisa beber água.', true),
+  MV('A rótula do joelho do recém-nascido ainda é quase toda de cartilagem.', true),
+  MV('Soluço é perigoso para o recém-nascido.', false),
+  MV('Colocar o bebê para arrotar depois de mamar ajuda a soltar o ar que ele engoliu.', true),
+  MV('O recém-nascido reconhece a voz da mamãe.', true),
+  MV('Chupeta é obrigatória para o bebê dormir bem.', false),
+  MV('Cortar o cabelo do bebê faz o cabelo nascer mais grosso.', false),
+  MV('A cor dos olhos do bebê já está definida no dia em que ele nasce.', false),
+  MV('Andador ajuda o bebê a andar mais cedo.', false),
+  MV('A grávida precisa comer por dois.', false),
+  MV('O formato da barriga mostra se o bebê é menino ou menina.', false),
+  { q: 'Quantos ossos, aproximadamente, um bebê tem ao nascer?', o: ['106', '206', 'Cerca de 300', 'Mais de 450'], a: 2 },
+  { q: 'Até que idade não se deve dar mel ao bebê?', o: ['3 meses', '6 meses', '1 ano', '3 anos'], a: 2 },
+  { q: 'Somando o dia todo, quantas horas um recém-nascido costuma dormir?', o: ['6 a 8 horas', '10 a 12 horas', '14 a 17 horas', '20 a 22 horas'], a: 2 },
+  { q: 'Por volta de que idade costuma aparecer o primeiro dentinho?', o: ['1 mês', '6 meses', '1 ano e meio', '2 anos'], a: 1 },
+  { q: 'O que é o mecônio?', o: ['A primeira papinha', 'O primeiro cocô do bebê', 'Um tipo de chupeta', 'A moleira'], a: 1 },
+  { q: 'Como se chama a parte mole no alto da cabeça do bebê?', o: ['Moleira', 'Nuca', 'Têmpora', 'Coroinha'], a: 0 },
+  { q: 'Qual teste usa gotinhas de sangue tiradas do calcanhar do recém-nascido?', o: ['Teste da orelhinha', 'Teste do olhinho', 'Teste do pezinho', 'Teste da linguinha'], a: 2 },
+  { q: 'O teste da orelhinha avalia o quê?', o: ['A visão', 'A audição', 'A fala', 'O equilíbrio'], a: 1 },
+  { q: 'Qual teste procura catarata e outros problemas nos olhos do recém-nascido?', o: ['Teste do olhinho', 'Teste do pezinho', 'Teste da orelhinha', 'Teste do coraçãozinho'], a: 0 },
+  { q: 'O teste do coraçãozinho mede o quê?', o: ['A pressão arterial', 'O oxigênio no sangue', 'A temperatura', 'O peso'], a: 1 },
+  { q: 'Até que idade a OMS recomenda dar só leite materno ao bebê?', o: ['2 meses', '4 meses', '6 meses', '1 ano'], a: 2 },
+  { q: 'Qual vitamina o recém-nascido costuma receber logo depois do parto?', o: ['Vitamina A', 'Vitamina C', 'Vitamina D', 'Vitamina K'], a: 3 },
+  { q: 'Qual hormônio faz o leite descer durante a amamentação?', o: ['Insulina', 'Adrenalina', 'Ocitocina', 'Melatonina'], a: 2 },
+  { q: 'Quantas semanas dura, em média, uma gravidez completa?', o: ['30', '36', '40', '52'], a: 2 },
+  { q: 'Como se chama o líquido que envolve o bebê dentro da barriga?', o: ['Líquido amniótico', 'Soro', 'Plasma', 'Colostro'], a: 0 },
+  { q: 'O que é o colostro?', o: ['O primeiro leite da mamãe', 'Um tipo de fralda', 'A placenta', 'Um exame do bebê'], a: 0 },
+  { q: 'Como se chama o período de recuperação da mamãe logo depois do parto?', o: ['Puerpério', 'Gestação', 'Trimestre', 'Ovulação'], a: 0 },
+  { q: 'Como se chama a médica ou o médico que acompanha a gravidez e o parto?', o: ['Pediatra', 'Obstetra', 'Cardiologista', 'Oftalmologista'], a: 1 },
+  { q: 'Como se chama o médico especialista em crianças?', o: ['Pediatra', 'Geriatra', 'Ortopedista', 'Dermatologista'], a: 0 },
+  { q: 'Em média, quanto pesa um bebê ao nascer?', o: ['Cerca de 1 kg', 'Cerca de 3 kg', 'Cerca de 5 kg', 'Cerca de 7 kg'], a: 1 },
+  { q: 'Quantas fraldas um recém-nascido costuma usar por dia?', o: ['1 a 2', '3 a 4', '8 a 12', '25 a 30'], a: 2 },
+  { q: 'Quantas vezes por minuto bate, em média, o coração de um recém-nascido?', o: ['40 a 60', '60 a 80', '100 a 160', '200 a 250'], a: 2 },
+  { q: 'A partir de que idade, em geral, começam as papinhas?', o: ['1 mês', '3 meses', '6 meses', '1 ano'], a: 2 },
+  { q: 'Até que idade o Ministério da Saúde recomenda não oferecer açúcar à criança?', o: ['6 meses', '1 ano', '2 anos', '5 anos'], a: 2 },
+  { q: 'Quantos dentes de leite uma criança tem ao todo?', o: ['10', '20', '28', '32'], a: 1 },
+  { q: 'Em que posição os pediatras recomendam que o bebê durma?', o: ['De barriga para baixo', 'De lado', 'De barriga para cima', 'Sentado'], a: 2 },
+  { q: 'Como se chama o reflexo em que o bebê abre os braços quando se assusta?', o: ['Reflexo de Moro', 'Reflexo de Babinski', 'Reflexo patelar', 'Reflexo de piscar'], a: 0 },
+  { q: 'Qual é a temperatura ideal da água do banho do bebê, mais ou menos?', o: ['25 °C', '30 °C', 'Cerca de 37 °C', '45 °C'], a: 2 },
+  { q: 'Em quanto tempo o coto do umbigo do bebê costuma cair?', o: ['Em 1 dia', 'Entre 1 e 2 semanas', 'Com 3 meses', 'Com 6 meses'], a: 1 },
+  { q: 'Na cantiga, onde está a borboletinha?', o: ['No jardim', 'Na cozinha', 'Na janela', 'No quintal'], a: 1 },
+  { q: 'Complete a cantiga de ninar: "Boi, boi, boi, boi da cara…"', o: ['Branca', 'Preta', 'Pintada', 'Malhada'], a: 1 },
+  { q: 'Na cantiga, por que o sapo não lava o pé?', o: ['Porque não quer', 'Porque a água está fria', 'Porque não tem sabão', 'Porque mora longe'], a: 0 },
+  { q: 'Em "Marcha soldado", a cabeça do soldado é feita de quê?', o: ['Papel', 'Madeira', 'Algodão', 'Lata'], a: 0 },
+  { q: 'Em "Nana neném", quem vem pegar o bebê que não dorme?', o: ['O Saci', 'A Cuca', 'O Curupira', 'O Boitatá'], a: 1 },
+  { q: 'Complete: "Ciranda, cirandinha, vamos todos…"', o: ['Cantar', 'Cirandar', 'Dançar', 'Brincar'], a: 1 },
+  { q: 'Complete: "Cai, cai, balão, cai, cai, balão, aqui na minha…"', o: ['Mão', 'Rua', 'Casa', 'Janela'], a: 0 },
+  { q: 'Complete: "Alecrim, alecrim dourado, que nasceu no campo sem ser…"', o: ['Regado', 'Semeado', 'Plantado', 'Cuidado'], a: 1 },
+  { q: 'Em "Atirei o pau no gato", o que aconteceu com o gato?', o: ['Não morreu', 'Fugiu', 'Dormiu', 'Subiu no telhado'], a: 0 },
+  { q: 'Qual destes NÃO costuma fazer parte do enxoval do bebê?', o: ['Body', 'Manta', 'Babador', 'Gravata'], a: 3 }
+];
+
+/* ---------- Estado ---------- */
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const rand = n => Math.floor(Math.random() * n);
+const coord = i => COLS[i % N] + (Math.floor(i / N) + 1);
+const fresh = keep => ({
+  v: VERSION, phase: 'setup', nTeams: keep && keep.nTeams ? keep.nTeams : 3,
+  names: keep && Array.isArray(keep.names) ? keep.names : TEAMS.map(t => t.name),
+  teams: [], turn: 0, ships: [], shots: {}, owner: {}, qOrder: [], qPos: 0, modal: null, msg: ''
+});
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (!s || typeof s !== 'object') return null;
+    if (s.v !== VERSION) return fresh(s);  // jogo salvo de uma versão antiga: mantém só os nomes
+    if (['setup', 'play', 'end'].includes(s.phase) && Array.isArray(s.teams) && Array.isArray(s.ships) && Array.isArray(s.names)) return s;
+  } catch (e) {}
+  return null;
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+let S = load() || fresh();
+let prev = null;  // um nível de "desfazer"
+
+function neighbors(i) {
+  const r = Math.floor(i / N), c = i % N, out = [];
+  for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+    const rr = r + dr, cc = c + dc;
+    if (rr >= 0 && rr < N && cc >= 0 && cc < N) out.push(rr * N + cc);
+  }
+  return out;
+}
+function placeShips() {
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const block = new Set(), ships = [];
+    let ok = true;
+    for (const [n, s] of FLEET) {
+      let placed = false;
+      for (let t = 0; t < 300 && !placed; t++) {
+        const h = Math.random() < .5;
+        const r = rand(h ? N : N - s + 1), c = rand(h ? N - s + 1 : N);
+        const cells = Array.from({ length: s }, (_, k) => h ? r * N + c + k : (r + k) * N + c);
+        if (cells.some(i => block.has(i))) continue;
+        cells.forEach(i => neighbors(i).forEach(j => block.add(j)));
+        ships.push({ n, s, cells });
+        placed = true;
+      }
+      if (!placed) { ok = false; break; }
+    }
+    if (ok) return ships;
+  }
+  throw new Error('Não consegui posicionar a frota');
+}
+const shipAt = i => S.ships.findIndex(s => s.cells.includes(i));
+const revealed = i => S.shots[i] === 'hit';
+const isDown = s => s.cells.every(revealed);
+const allDown = () => S.ships.every(isDown);
+function nextQ() {
+  if (S.qPos >= S.qOrder.length) { S.qOrder = shuffle(QS.map((_, i) => i)); S.qPos = 0; }
+  return S.qOrder[S.qPos++];
+}
+const team = () => S.teams[S.turn];
+const passTurn = () => { S.turn = (S.turn + 1) % S.teams.length; };
+const ranking = () => S.teams.map((t, i) => ({ ...t, i })).sort((a, b) => b.pts - a.pts || b.parts - a.parts);
+const artigo = (n, cap) => FEM(n) ? (cap ? 'A' : 'a') : (cap ? 'O' : 'o');
+
+/* ---------- Ações ---------- */
+function startGame() {
+  S.teams = TEAMS.slice(0, S.nTeams).map((d, i) => ({
+    name: String(S.names[i] || '').trim().slice(0, 18) || d.name, c: d.c, pts: 0, parts: 0
+  }));
+  S.ships = placeShips(); S.shots = {}; S.owner = {};
+  S.qOrder = shuffle(QS.map((_, i) => i)); S.qPos = 0;
+  S.turn = 0; S.modal = null; S.phase = 'play';
+  S.msg = `${S.teams[0].name} começa. Escolham uma letra e um número, como D7.`;
+  prev = null;
+}
+let revealTimer = null, lastCell = null;
+function fire(i) {
+  if (S.phase !== 'play' || S.modal || S.shots[i]) return;
+  prev = JSON.stringify(S);
+  lastCell = i;
+  const si = shipAt(i);
+  if (si < 0) {
+    S.shots[i] = 'miss';
+    passTurn();
+    S.msg = `Água em ${coord(i)}! Agora joga: ${team().name}.`;
+    return;
+  }
+  // Achou um pedaço: ele aparece no tabuleiro e a pergunta abre logo depois
+  S.shots[i] = 'pending';
+  S.modal = { cell: i, ship: si, q: nextQ(), chosen: null, step: 'found', ok: null, sunk: false, gain: 0 };
+  S.msg = `${team().name} achou um pedaço ${FEM(S.ships[si].n) ? 'de uma' : 'do'} ${S.ships[si].n} em ${coord(i)}!`;
+  clearTimeout(revealTimer);
+  revealTimer = setTimeout(openQuestion, REVEAL_MS);
+}
+function openQuestion() {
+  if (!S.modal || S.modal.step !== 'found') return;
+  S.modal.step = 'ask';
+  startTimer();
+  render();
+}
+function confirmAnswer() {
+  const m = S.modal; if (!m || m.step !== 'confirm') return;
+  const t = team(), q = QS[m.q];
+  stopTimer();
+  m.ok = m.chosen === q.a;
+  if (m.ok) {
+    S.shots[m.cell] = 'hit'; S.owner[m.cell] = S.turn; t.parts++; m.gain = PTS;
+    m.sunk = isDown(S.ships[m.ship]);
+    if (m.sunk) m.gain += BONUS;
+    t.pts += m.gain;
+  } else {
+    delete S.shots[m.cell];  // errou: o pedaço volta a ficar escondido até alguém acertar
+  }
+  m.step = 'result';
+}
+function closeModal() {
+  const m = S.modal; if (!m || m.step !== 'result') return;
+  const t = team(), ship = S.ships[m.ship];
+  if (m.ok) {
+    S.msg = m.sunk ? `${t.name} afundou ${artigo(ship.n)} ${ship.n}! Continua jogando.` : `${t.name} garantiu o pedaço em ${coord(m.cell)}. Continua jogando.`;
+  } else {
+    passTurn();
+    S.msg = `Resposta errada! O pedaço voltou a se esconder no mar. Agora joga: ${team().name}.`;
+  }
+  S.modal = null;
+  if (allDown()) { S.phase = 'end'; prev = null; setTimeout(confetti, 150); }
+}
+
+/* ---------- Cronômetro da pergunta ---------- */
+let timer = null, endAt = 0, ac = null;
+function ensureAudio() { try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch (e) {} }
+function beep() {
+  if (!ac) return;
+  try {
+    [0, .35, .7].forEach(t => {
+      const o = ac.createOscillator(), g = ac.createGain(), s = ac.currentTime + t;
+      o.frequency.value = 880; o.connect(g); g.connect(ac.destination);
+      g.gain.setValueAtTime(.0001, s); g.gain.exponentialRampToValueAtTime(.3, s + .02); g.gain.exponentialRampToValueAtTime(.0001, s + .28);
+      o.start(s); o.stop(s + .3);
+    });
+  } catch (e) {}
+}
+function paintTimer() {
+  const el = $('#mtimer'); if (!el) return;
+  const left = Math.ceil((endAt - Date.now()) / 1000);
+  if (left > 0) { el.textContent = left; el.className = 'mtimer' + (left <= 5 ? ' low' : ''); }
+  else { el.textContent = 'Tempo!'; el.className = 'mtimer low done'; }
+}
+function startTimer() {
+  clearInterval(timer);
+  endAt = Date.now() + SECS * 1000;
+  timer = setInterval(() => {
+    paintTimer();
+    if (Date.now() >= endAt) { clearInterval(timer); timer = null; beep(); }
+  }, 250);
+}
+function stopTimer() { clearInterval(timer); timer = null; endAt = 0; }
+
+/* ---------- Telas ---------- */
+function viewSetup() {
+  const pieces = FLEET.reduce((n, f) => n + f[1], 0);
+  return `<section class="card setup">
+    <p class="kicker">Jogo em grupos · tabuleiro ${N}x${N} · ${FLEET.length} barcos escondidos</p>
+    <h2 class="display">Batalha naval com perguntas</h2>
+    <ol class="rules">
+      <li>Divida a família em grupos. Na sua vez, o grupo escolhe uma casa do tabuleiro, como D7.</li>
+      <li>Caiu na água, passa a vez. Achou um pedaço de barco, abre uma pergunta.</li>
+      <li>Acertou a pergunta: ganha ${PTS} pontos e joga de novo. Errou: o pedaço volta a se esconder e passa a vez, até alguém achar de novo e acertar.</li>
+      <li>Quem afunda um barco inteiro ganha mais ${BONUS} pontos de bônus. São ${pieces} pedaços no mar.</li>
+    </ol>
+    <div class="row"><p class="hint">Quantos grupos?</p>
+      <div class="seg" role="group" aria-label="Quantos grupos">${[2, 3, 4, 6].map(n => `<button type="button" data-act="nteams" data-n="${n}" aria-pressed="${S.nTeams === n}">${n}</button>`).join('')}</div></div>
+    <div class="names">${TEAMS.slice(0, S.nTeams).map((d, i) => S.names[i] ?? d.name).map((n, i) => `<label class="t-${TEAMS[i].c}"><span class="dot"></span><input id="team-${i}" data-i="${i}" maxlength="18" value="${esc(n)}" aria-label="Nome do grupo ${i + 1}"></label>`).join('')}</div>
+    <div class="row"><p class="hint">No controle da TV: setas para escolher, OK para confirmar.</p>
+      <button type="button" class="btn primary" data-act="start">Começar a batalha</button></div>
+  </section>`;
+}
+/* Desenho de cada barco na horizontal, com 100 unidades de largura por casa */
+const BOATS = {};
+function boatImg(n) {
+  if (BOATS[n]) return BOATS[n];
+  const W = n * 100, ink = '#4A2B37', white = '#FFFFFF', accent = '#CF6582', sail = '#FFF5D2';
+  let g;
+  if (n === 1) {  // submarino
+    g = `<path d="M54 34 V20 H66" stroke="${ink}" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <rect x="40" y="32" width="20" height="22" rx="5" fill="${ink}"/>
+      <ellipse cx="50" cy="62" rx="42" ry="17" fill="${ink}"/>
+      <path d="M88 62 L98 52 V72 Z" fill="${ink}"/>
+      <circle cx="34" cy="62" r="5" fill="${white}"/><circle cx="54" cy="62" r="5" fill="${white}"/>`;
+  } else {
+    let top = '';
+    if (n === 2) {  // barquinho a vela
+      const m = W * .45;
+      top = `<path d="M${m} 52 V8" stroke="${ink}" stroke-width="5"/>
+        <path d="M${m + 5} 12 L${m + 5} 46 L${W - 26} 46 Z" fill="${sail}" stroke="${ink}" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M${m - 5} 20 L${m - 5} 46 L36 46 Z" fill="${white}" stroke="${ink}" stroke-width="4" stroke-linejoin="round"/>`;
+    } else {  // lancha, navio e porta-aviões
+      const a = W * .28, b = W * .78;
+      top += `<rect x="${W * .55}" y="10" width="22" height="24" rx="3" fill="${accent}" stroke="${ink}" stroke-width="4"/>`;
+      if (n === 5) top += `<rect x="${W * .4}" y="14" width="18" height="20" rx="3" fill="${accent}" stroke="${ink}" stroke-width="4"/>`;
+      top += `<rect x="${a}" y="30" width="${b - a}" height="22" rx="6" fill="${white}" stroke="${ink}" stroke-width="4"/>`;
+      for (let x = a + 16; x < b - 22; x += 30) top += `<rect x="${x}" y="36" width="13" height="9" rx="2" fill="${ink}"/>`;
+    }
+    let ports = '';
+    for (let k = 0; k < n; k++) ports += `<circle cx="${k * 100 + 55}" cy="74" r="5" fill="${white}"/>`;
+    g = top + `<path d="M4 52 H${W - 6} L${W - 16} 86 H28 Z" fill="${ink}"/>
+      <path d="M12 61 H${W - 9}" stroke="${accent}" stroke-width="5"/>` + ports;
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} 100" preserveAspectRatio="none">${g}</svg>`;
+  return (BOATS[n] = 'data:image/svg+xml,' + encodeURIComponent(svg));
+}
+function pieceHtml(i, si) {
+  const s = S.ships[si], k = s.cells.indexOf(i);
+  const pos = s.s > 1 ? (k / (s.s - 1)) * 100 : 0;
+  return `<span class="piece"><span class="slice" style="background-image:url('${boatImg(s.s)}');background-size:${s.s * 100}% 100%;background-position:${pos}% 0"></span></span>`;
+}
+function cellHtml(i) {
+  const st = S.shots[i], si = shipAt(i);
+  const vertical = si >= 0 && S.ships[si].s > 1 && S.ships[si].cells[1] - S.ships[si].cells[0] === N;
+  let cls = 'cell', inner = '', label = coord(i);
+  if (st === 'miss') { cls += ' miss'; inner = '•'; label += ', água'; }
+  else if (st === 'pending') {
+    cls += ' pending' + (S.modal && S.modal.step === 'found' && S.modal.cell === i ? ' rise' : '');
+    inner = pieceHtml(i, si); label += ', pedaço encontrado';
+  }
+  else if (st === 'hit') {
+    const t = S.teams[S.owner[i]];
+    cls += ` hit t-${t.c}` + (isDown(S.ships[si]) ? ' sunk' : '');
+    inner = pieceHtml(i, si); label += `, pedaço do ${t.name}`;
+  }
+  else if (S.phase === 'end' && si >= 0) { cls += ' ghost'; inner = pieceHtml(i, si); label += ', barco não encontrado'; }
+  if (inner && vertical && st !== 'miss') cls += ' v';
+  const off = S.phase !== 'play' || !!st || !!S.modal;
+  return `<button type="button" class="${cls}" data-act="fire" data-i="${i}" aria-label="${esc(label)}"${off ? ' disabled' : ''}>${inner}</button>`;
+}
+function boardHtml() {
+  let h = '<span></span>' + [...COLS].map(c => `<span class="lab">${c}</span>`).join('');
+  for (let r = 0; r < N; r++) {
+    h += `<span class="lab">${r + 1}</span>`;
+    for (let c = 0; c < N; c++) h += cellHtml(r * N + c);
+  }
+  return `<div class="boardwrap"><div class="board" role="group" aria-label="Tabuleiro">${h}</div></div>`;
+}
+function scoreHtml(list, mark) {
+  return `<ol class="score${list.length > 4 ? ' many' : ''}">${list.map(t => `<li class="t-${t.c}${mark && t.i === S.turn ? ' now' : ''}"><span class="dot"></span><span class="nm">${esc(t.name)}</span><span class="pts">${t.pts.toLocaleString('pt-BR')}<small>${t.parts} ${t.parts === 1 ? 'pedaço' : 'pedaços'}</small></span></li>`).join('')}</ol>`;
+}
+function fleetHtml() {
+  return `<ul class="fleet">${S.ships.map(s => `<li class="${isDown(s) ? 'down' : ''}"><span class="pieces">${s.cells.map(c =>
+    S.shots[c] === 'hit' ? `<i class="hit t-${S.teams[S.owner[c]].c}"></i>` : '<i></i>').join('')}</span><span class="nm">${s.n}</span></li>`).join('')}</ul>`;
+}
+function viewPlay() {
+  const t = team();
+  return `<div class="game">
+    ${boardHtml()}
+    <div class="side">
+      <div class="turn t-${t.c}"><p class="kicker">Agora joga</p><p class="who">${esc(t.name)}</p></div>
+      <p class="msg" aria-live="polite">${esc(S.msg)}</p>
+      <section class="card"><p class="kicker">Placar</p>${scoreHtml(S.teams.map((x, i) => ({ ...x, i })), true)}</section>
+      <section class="card"><p class="kicker">Frota escondida · ${S.ships.reduce((n, s) => n + s.s, 0)} pedaços</p>${fleetHtml()}</section>
+      <div class="grp">
+        <button type="button" class="btn sm" data-act="undo"${prev ? '' : ' disabled'}>Desfazer último tiro</button>
+        <button type="button" class="btn sm" data-act="finish" id="finish">Encerrar jogo</button>
+      </div>
+    </div>
+  </div>`;
+}
+function viewEnd() {
+  const r = ranking(), top = r[0], tie = r.length > 1 && r[1].pts === top.pts && r[1].parts === top.parts;
+  const pod = (t, n) => t ? `<div class="pod p${n} t-${t.c}"><span class="nm">${esc(t.name)}</span><span class="sc">${t.pts.toLocaleString('pt-BR')} pts</span><div class="block">${n}º</div></div>` : '<div></div>';
+  return `<div class="game">
+    ${boardHtml()}
+    <section class="card final">
+      <p class="kicker">Fim da batalha</p>
+      <h2 class="display">${tie ? 'Empate! Quem ganhou foi a Antonela.' : `${esc(top.name)} venceu!`}</h2>
+      <div class="podium">${pod(r[1], 2)}${pod(r[0], 1)}${pod(r[2], 3)}</div>
+      ${scoreHtml(r, false)}
+      <div class="row end"><button type="button" class="btn primary" data-act="again" id="again">Jogar de novo</button></div>
+    </section>
+  </div>`;
+}
+function viewModal() {
+  const m = S.modal, t = team(), q = QS[m.q], ship = S.ships[m.ship];
+  const alts = q.o.map((o, k) => {
+    let cls = 'alt';
+    // No resultado, só a alternativa escolhida fica marcada. A certa não é revelada quando o grupo erra.
+    if (m.step === 'result') { if (k === m.chosen) cls += m.ok ? ' right' : ' wrong'; }
+    else if (k === m.chosen) cls += ' chosen';
+    return `<button type="button" class="${cls}" data-act="choose" data-k="${k}"${m.step !== 'ask' ? ' disabled' : ''}><span class="lt">${LT[k]}</span><span class="tx">${o}</span></button>`;
+  }).join('');
+  let foot;
+  if (m.step === 'ask') {
+    foot = `<p class="hint">Toque na alternativa que o grupo escolher.</p>`;
+  } else if (m.step === 'confirm') {
+    foot = `<p class="sure">Está certo disso?</p>
+      <div class="row end"><button type="button" class="btn" data-act="change">Mudar resposta</button>
+      <button type="button" class="btn primary" data-act="confirm">Sim, pode confirmar</button></div>`;
+  } else {
+    foot = `<p class="verdict ${m.ok ? 'ok' : 'bad'}">${m.ok ? `Certa resposta! +${PTS}` : 'Que pena, resposta errada'}</p>
+      ${m.sunk ? `<p class="bonus">Afundou ${artigo(ship.n)} ${ship.n}! +${BONUS} de bônus</p>` : ''}
+      <div class="row end"><button type="button" class="btn primary" data-act="close">${m.ok ? 'Continuar jogando' : 'Passar a vez'}</button></div>`;
+  }
+  return `<div class="mhead">
+      <div><p class="kicker">${coord(m.cell)} · achou um pedaço ${FEM(ship.n) ? 'de uma' : 'do'} ${ship.n}!</p>
+      <span class="pill t-${t.c}">${esc(t.name)} · vale ${PTS} pontos</span></div>
+      ${m.step === 'result' ? '' : '<span class="mtimer" id="mtimer" aria-label="Tempo restante"></span>'}
+    </div>
+    ${q.o.length === 2 ? '<p class="mv">Mito ou verdade?</p>' : ''}
+    <p class="question">${q.q}</p>
+    <div class="alts">${alts}</div>
+    ${foot}`;
+}
+function render() {
+  const fk = focusKey(document.activeElement);
+  $('#main').innerHTML = S.phase === 'setup' ? viewSetup() : S.phase === 'play' ? viewPlay() : viewEnd();
+  const ov = $('#overlay'), md = $('#modal');
+  if (S.modal && S.modal.step !== 'found' && S.phase === 'play') {
+    ov.hidden = false;
+    md.className = `modal t-${team().c}`;
+    md.innerHTML = viewModal();
+    if (endAt) paintTimer(); else { const el = $('#mtimer'); if (el) el.hidden = true; }
+  } else { ov.hidden = true; md.innerHTML = ''; }
+  restoreFocus(fk);
+  save();
+}
+
+/* ---------- Controle remoto da TV e teclado ---------- */
+let kbdMode = false;
+const finding = () => S.modal && S.modal.step === 'found';
+function focusables() {
+  const modalOpen = !$('#overlay').hidden;
+  const els = modalOpen ? [...$('#modal').querySelectorAll('button')] : [...$('#main').querySelectorAll('button, input'), ...document.querySelectorAll('.top button')];
+  return els.filter(el => !el.disabled && !el.hidden && el.offsetParent !== null);
+}
+function focusKey(el) {
+  if (!el || el === document.body || !el.dataset) return null;
+  return { act: el.dataset.act, i: el.dataset.i, k: el.dataset.k, n: el.dataset.n, id: el.id };
+}
+function pickDefault(list) {
+  const by = sel => list.find(x => x.matches(sel));
+  if (!$('#overlay').hidden) return by('[data-act=confirm]') || by('[data-act=close]') || by('.alt') || list[0];
+  if (S.phase === 'setup') return by('[data-act=start]') || list[0];
+  if (S.phase === 'end') return by('[data-act=again]') || list[0];
+  const cells = list.filter(x => x.classList.contains('cell'));
+  if (!cells.length) return list[0];
+  const t = lastCell ?? (N * N / 2 + N / 2), tr = Math.floor(t / N), tc = t % N;
+  let best = cells[0], bd = Infinity;
+  for (const x of cells) {
+    const i = +x.dataset.i, d = Math.abs(Math.floor(i / N) - tr) + Math.abs(i % N - tc);
+    if (d < bd) { bd = d; best = x; }
+  }
+  return best;
+}
+function restoreFocus(fk) {
+  if (finding()) return;  // durante a animação do barco nenhum botão recebe o foco
+  const list = focusables(); if (!list.length) return;
+  const same = fk && list.find(x => x.dataset.act === fk.act && x.dataset.i === fk.i && x.dataset.k === fk.k && x.dataset.n === fk.n && (!fk.id || x.id === fk.id));
+  (same || pickDefault(list)).focus({ preventScroll: !kbdMode });
+}
+function move(dir) {
+  const list = focusables(); if (!list.length) return;
+  const cur = document.activeElement;
+  if (!list.includes(cur)) { pickDefault(list).focus(); return; }
+  const a = cur.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+  let best = null, bs = Infinity;
+  for (const el of list) {
+    if (el === cur) continue;
+    const r = el.getBoundingClientRect(), dx = r.left + r.width / 2 - ax, dy = r.top + r.height / 2 - ay;
+    const main = dir === 'left' ? -dx : dir === 'right' ? dx : dir === 'up' ? -dy : dy;
+    if (main <= 1) continue;
+    const side = dir === 'left' || dir === 'right' ? Math.abs(dy) : Math.abs(dx);
+    const score = main + side * 2.5;
+    if (score < bs) { bs = score; best = el; }
+  }
+  if (best) { best.focus(); best.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+}
+const DIRS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+document.addEventListener('keydown', e => {
+  const isOk = e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23;
+  if (!DIRS[e.key] && !isOk) return;
+  if (!kbdMode) { kbdMode = true; document.documentElement.classList.add('kbd'); }
+  if (finding()) { e.preventDefault(); return; }  // barco ainda aparecendo: ignora o controle
+  const inInput = e.target.tagName === 'INPUT';
+  if (DIRS[e.key]) {
+    if (inInput && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+    e.preventDefault(); move(DIRS[e.key]); return;
+  }
+  e.preventDefault();
+  const el = document.activeElement;
+  if (el && el.tagName === 'BUTTON' && !el.disabled) el.click();
+  else if (inInput) move('down');
+  else { const l = focusables(); if (l.length) pickDefault(l).focus(); }
+});
+document.addEventListener('pointerdown', () => { if (kbdMode) { kbdMode = false; document.documentElement.classList.remove('kbd'); } });
+
+/* ---------- Confete ---------- */
+function confetti() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const c = $('#confetti'), x = c.getContext('2d'), d = devicePixelRatio || 1;
+  c.hidden = false;
+  const W = c.width = innerWidth * d, H = c.height = innerHeight * d;
+  const cols = ['#F6BCC8', '#CF6582', '#FAE08E', '#D9A92A', '#DED2F4', '#CDEBDC'];
+  const ps = Array.from({ length: 170 }, (_, i) => ({
+    x: Math.random() * W, y: -Math.random() * H * .7, w: (6 + Math.random() * 8) * d, h: (10 + Math.random() * 10) * d,
+    vy: (2 + Math.random() * 3) * d, vx: (Math.random() - .5) * 2 * d, r: Math.random() * 6, vr: (Math.random() - .5) * .2, c: cols[i % cols.length]
+  }));
+  const t0 = performance.now();
+  (function frame(now) {
+    x.clearRect(0, 0, W, H);
+    ps.forEach(p => { p.x += p.vx; p.y += p.vy; p.r += p.vr; x.save(); x.translate(p.x, p.y); x.rotate(p.r); x.fillStyle = p.c; x.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); x.restore(); });
+    if (now - t0 < 5500) requestAnimationFrame(frame); else { x.clearRect(0, 0, W, H); c.hidden = true; }
+  })(t0);
+}
+
+/* ---------- Eventos ---------- */
+const armed = {};
+function twoTap(b, key, label, msg, fn) {
+  if (!armed[key]) {
+    b.textContent = msg;
+    armed[key] = setTimeout(() => { armed[key] = null; b.textContent = label; }, 4000);
+    return;
+  }
+  clearTimeout(armed[key]); armed[key] = null;
+  fn();
+}
+const ACT = {
+  nteams(d) { S.nTeams = +d.n; },
+  start() { startGame(); },
+  fire(d) { fire(+d.i); },
+  choose(d) { const m = S.modal; if (!m || m.step !== 'ask') return; m.chosen = +d.k; m.step = 'confirm'; },
+  change() { const m = S.modal; if (m && m.step === 'confirm') { m.step = 'ask'; m.chosen = null; } },
+  confirm() { confirmAnswer(); },
+  close() { closeModal(); },
+  undo() {
+    if (!prev) return;
+    stopTimer(); clearTimeout(revealTimer);
+    S = JSON.parse(prev); prev = null;
+    S.msg = `Último tiro desfeito. Agora joga: ${team().name}.`;
+  },
+  finish(d, b) { twoTap(b, 'finish', 'Encerrar jogo', 'Toque de novo para encerrar', () => { stopTimer(); clearTimeout(revealTimer); S.modal = null; S.phase = 'end'; prev = null; render(); confetti(); }); return 'skip'; },
+  again(d, b) { twoTap(b, 'again', 'Jogar de novo', 'Toque de novo: zera o placar', () => { stopTimer(); S = fresh(S); prev = null; render(); }); return 'skip'; },
+  fs() {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      else document.documentElement.requestFullscreen().catch(() => {});
+    } catch (e) {}
+    return 'skip';
+  }
+};
+document.addEventListener('click', e => {
+  ensureAudio();
+  const b = e.target.closest('[data-act]');
+  if (!b || b.disabled || !ACT[b.dataset.act]) return;
+  if (ACT[b.dataset.act](b.dataset, b) !== 'skip') render();
+});
+document.addEventListener('input', e => {
+  const i = e.target.dataset && e.target.dataset.i;
+  if (e.target.tagName === 'INPUT' && i !== undefined) { S.names[+i] = e.target.value.slice(0, 18); save(); }
+});
+if (!document.fullscreenEnabled) $('#fs').hidden = true;
+// Se a página recarregar no meio de uma pergunta, ela reabre com o cronômetro zerado
+if (S.modal && S.modal.step === 'found') S.modal.step = 'ask';
+if (S.modal && S.modal.step !== 'result') startTimer();
+render();
+</script>
+
+</body>
+</html>
